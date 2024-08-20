@@ -21,7 +21,6 @@ object IOGlobal {
   private def propagateState[A](thunk: => IO[A]): IO[A] =
     IOLocalHack.get.flatMap { state => threadLocal.set(state); thunk }
 
-  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf")) // we know that value under IOLocal[A] should be A
   def getCurrent[A](local: IOLocal[A]): Option[A] = threadLocal.get().get(local).asInstanceOf[Option[A]]
 
   def setTemporarily[A](local: IOLocal[A], value: A): Unit = threadLocal.set(threadLocal.get().updated(local, value))

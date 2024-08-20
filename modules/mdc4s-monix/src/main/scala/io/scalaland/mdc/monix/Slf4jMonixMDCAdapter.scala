@@ -1,17 +1,18 @@
-package io.scalaland.mdc.cats
+package io.scalaland.mdc.monix
 
-import cats.effect.{IO, IOLocal}
+import io.scalaland.mdc.MDC
+import monix.eval.Task
 
 import java.util as ju
+import monix.execution.misc.Local
 import org.slf4j.spi.MDCAdapter
-import io.scalaland.mdc.MDC
 
 import scala.jdk.CollectionConverters.*
 
-/** Based on OlegPy's solution: https://olegpy.com/better-logging-monix-1/, adapted to new Slf4j 2 and Cats Effect 3. */
-final class Slf4jIOMDCAdapter private (local: IOLocal[MDC.Ctx]) extends MDCAdapter {
-  private def getMDC: MDC.Ctx = IOGlobal.getCurrent(local).getOrElse(Map.empty[String, String])
-  private def setMDC(mdc: MDC.Ctx): Unit = IOGlobal.setTemporarily(local, mdc)
+/** Based on OlegPy's solution: https://olegpy.com/better-logging-monix-1/, adapted to new Slf4j 2. */
+final class Slf4jMonixMDCAdapter(local: Local[MDC.Ctx]) extends MDCAdapter {
+  private def getMDC: MDC.Ctx = local()
+  private def setMDC(mdc: MDC.Ctx): Unit = local := mdc
   private def update(f: MDC.Ctx => MDC.Ctx): Unit = setMDC(f(getMDC))
 
   override def put(key: String, `val`: String): Unit = update(_.updated(key, `val`))
@@ -22,21 +23,21 @@ final class Slf4jIOMDCAdapter private (local: IOLocal[MDC.Ctx]) extends MDCAdapt
   override def getCopyOfContextMap: ju.Map[String, String] = getMDC.asJava
   override def setContextMap(contextMap: ju.Map[String, String] @unchecked): Unit = setMDC(contextMap.asScala.toMap)
 
-  // TODO: IOLocal[Map[String, List]]
+  // TODO: Local[Map[String, List]]
   override def pushByKey(key: String, value: String): Unit = ???
   override def popByKey(key: String): String = ???
   override def getCopyOfDequeByKey(key: String): ju.Deque[String] = ???
   override def clearDequeByKey(key: String): Unit = ???
 }
-object Slf4jIOMDCAdapter {
+object Slf4jMonixMDCAdapter {
 
-  /** Initialize MDC.mdcAdapter (with default scope) to our implementation. */
-  def configure: IO[MDC[IO]] = for {
-    local <- IOLocal(Map.empty[String, String])
-    _ <- IO {
+  // Initialize MDC.mdcAdapter (with default scope) to our implementation.
+  def configure(): Task[MDC[Task]] = for {
+    local <- Task.now(Local[MDC.Ctx](Map.empty))
+    _ <- Task {
       val field = classOf[org.slf4j.MDC].getDeclaredField("mdcAdapter")
       field.setAccessible(true)
-      field.set(null, new Slf4jIOMDCAdapter(local))
+      field.set(null, new Slf4jMonixMDCAdapter(local))
     }
-  } yield new IOMDC(local)
+  } yield new MonixMDC(local)
 }

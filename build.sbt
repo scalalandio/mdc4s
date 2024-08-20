@@ -34,6 +34,9 @@ val versions = new {
   val idePlatform = VirtualAxis.jvm
 
   // Dependencies
+  val catsEffect = "3.5.4"
+  val monix = "3.4.0"
+  val slf4j = "2.0.13"
 }
 
 // Common settings:
@@ -227,7 +230,7 @@ val publishSettings = Seq(
 val mimaSettings = Seq(
   mimaPreviousArtifacts := {
     val previousVersions = moduleName.value match {
-      case _       => Set()
+      case _ => Set()
     }
     previousVersions.map(organization.value %% moduleName.value % _)
   },
@@ -261,7 +264,7 @@ val ciCommand = (platform: String, scalaSuffix: String) => {
 
 val publishLocalForTests = {
   for {
-    module <- Vector("mdc4s", "mdc4s-cats-effect")
+    module <- Vector("mdc4s", "mdc4s-cats-effect", "mdc4s-monix")
     moduleVersion <- Vector(module, module + "3")
   } yield moduleVersion + "/publishLocal"
 }.mkString(" ; ")
@@ -291,7 +294,8 @@ lazy val root = project
          |
          |If you need to test library locally in a different project, use publish-local-for-tests or manually publishLocal:
          | - mdc4s (obligatory)
-         | - mdc4s-cats-effect (the only implementation ATM)
+         | - mdc4s-cats-effect (optional)
+         | - mdc4s-monix (optional)
          |for the right Scala version and platform (see projects task).
          |""".stripMargin,
     usefulTasks := Seq(
@@ -333,7 +337,7 @@ lazy val root = project
   .settings(publishSettings)
   .settings(noPublishSettings)
   .aggregate(
-    (mdc4s.projectRefs ++ mdc4sCatsEffect.projectRefs) *
+    (mdc4s.projectRefs ++ mdc4sCatsEffect.projectRefs ++ mdc4sMonix.projectRefs) *
   )
 
 lazy val mdc4s = projectMatrix
@@ -369,8 +373,28 @@ lazy val mdc4sCatsEffect = projectMatrix
   .settings(publishSettings *)
   .settings(mimaSettings *)
   .settings(
-    libraryDependencies += "org.typelevel" %% "cats-effect" % "3.5.4",
-    libraryDependencies += "org.slf4j" % "slf4j-api" % "2.0.13"
+    libraryDependencies += "org.typelevel" %% "cats-effect" % versions.catsEffect,
+    libraryDependencies += "org.slf4j" % "slf4j-api" % versions.slf4j
+  )
+  .dependsOn(mdc4s)
+
+lazy val mdc4sMonix = projectMatrix
+  .in(file("modules/mdc4s-monix"))
+  .someVariations(versions.scalas, List(VirtualAxis.jvm))((only1VersionInIDE) *)
+  .enablePlugins(GitVersioning, GitBranchPrompt)
+  .disablePlugins(WelcomePlugin)
+  .settings(
+    moduleName := "mdc4s-monix",
+    name := "mdc4s-monix",
+    description := "MDC implementation for Monix"
+  )
+  .settings(settings *)
+  .settings(versionSchemeSettings *)
+  .settings(publishSettings *)
+  .settings(mimaSettings *)
+  .settings(
+    libraryDependencies += "io.monix" %% "monix" % versions.monix,
+    libraryDependencies += "org.slf4j" % "slf4j-api" % versions.slf4j
   )
   .dependsOn(mdc4s)
 
