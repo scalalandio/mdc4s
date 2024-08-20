@@ -193,11 +193,11 @@ val versionSchemeSettings = Seq(versionScheme := Some("early-semver"))
 
 val publishSettings = Seq(
   organization := "io.scalaland",
-  homepage := Some(url("https://scalaland.io/enumz")),
+  homepage := Some(url("https://scalaland.io/mdc4s")),
   organizationHomepage := Some(url("https://scalaland.io")),
   licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
   scmInfo := Some(
-    ScmInfo(url("https://github.com/scalalandio/enumz/"), "scm:git:git@github.com:scalalandio/enumz.git")
+    ScmInfo(url("https://github.com/scalalandio/mdc4s/"), "scm:git:git@github.com:scalalandio/mdc4s.git")
   ),
   startYear := Some(2017),
   developers := List(
@@ -244,7 +244,7 @@ val ciCommand = (platform: String, scalaSuffix: String) => {
   def withCoverage(tasks: String*): Vector[String] =
     "coverage" +: tasks.toVector :+ "coverageAggregate" :+ "coverageOff"
 
-  val projects = Vector("enumz")
+  val projects = Vector("mdc4s")
     .map(name => s"$name${if (isJVM) "" else platform}$scalaSuffix")
   def tasksOf(name: String): Vector[String] = projects.map(project => s"$project/$name")
 
@@ -368,6 +368,10 @@ lazy val mdc4sCatsEffect = projectMatrix
   .settings(versionSchemeSettings *)
   .settings(publishSettings *)
   .settings(mimaSettings *)
+  .settings(
+    libraryDependencies += "org.typelevel" %% "cats-effect" % "3.5.4",
+    libraryDependencies += "org.slf4j" % "slf4j-api" % "2.0.13"
+  )
   .dependsOn(mdc4s)
 
 addCommandAlias("fullTest", "test")
