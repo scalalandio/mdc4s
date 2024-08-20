@@ -77,7 +77,7 @@ val settings = Seq(
           "-explain",
           "-explain-types",
           "-feature",
-          "-Wconf:msg=Unreachable case:s", // suppress fake (?) errors in internal.compiletime
+          "-Wconf:msg=object ImplicitConversions in package convert is deprecated:s", // 2.12 bincompat
           // "-Wnonunit-statement",
           // "-Wunused:imports", // import x.Underlying as X is marked as unused even though it is! probably one of https://github.com/scala/scala3/issues/: #18564, #19252, #19657, #19912
           "-Wunused:privates",
@@ -101,9 +101,7 @@ val settings = Seq(
           "-explaintypes",
           "-feature",
           "-language:higherKinds",
-          "-Wconf:msg=discarding unmoored doc comment:s", // silence errors when scaladoc cannot comprehend nested vals
-          "-Wconf:msg=Could not find any member to link for:s", // since errors when scaladoc cannot link to stdlib types or nested types
-          "-Wconf:msg=Variable .+ undefined in comment for:s", // silence errors when there we're showing a buggy Expr in scaladoc comment
+          "-Wconf:msg=object ImplicitConversions in package convert is deprecated:s", // 2.12 bincompat
           "-Wunused:patvars",
           "-Xfatal-warnings",
           "-Xlint:adapted-args",
@@ -137,12 +135,6 @@ val settings = Seq(
           "-explaintypes",
           "-feature",
           "-language:higherKinds",
-          "-Wconf:cat=deprecation&origin=io.scalaland.chimney.*:s", // we want to be able to deprecate APIs and test them while they're deprecated
-          "-Wconf:msg=The outer reference in this type test cannot be checked at run time:s", // suppress fake(?) errors in internal.compiletime (adding origin breaks this suppression)
-          "-Wconf:src=io/scalaland/chimney/cats/package.scala:s", // silence package object inheritance deprecation
-          "-Wconf:msg=discarding unmoored doc comment:s", // silence errors when scaladoc cannot comprehend nested vals
-          "-Wconf:msg=Could not find any member to link for:s", // since errors when scaladoc cannot link to stdlib types or nested types
-          "-Wconf:msg=Variable .+ undefined in comment for:s", // silence errors when there we're showing a buggy Expr in scaladoc comment
           "-Xexperimental",
           "-Xfatal-warnings",
           "-Xfuture",

@@ -7,8 +7,9 @@ import java.util as ju
 import monix.execution.misc.Local
 import org.slf4j.spi.MDCAdapter
 
-import scala.jdk.CollectionConverters.*
+import scala.annotation.nowarn
 
+@nowarn
 /** Based on OlegPy's solution: https://olegpy.com/better-logging-monix-1/, adapted to new Slf4j 2. */
 final class Slf4jMonixMDCAdapter(local: Local[MDC.Ctx]) extends MDCAdapter {
   private def getMDC: MDC.Ctx = local()
@@ -17,11 +18,12 @@ final class Slf4jMonixMDCAdapter(local: Local[MDC.Ctx]) extends MDCAdapter {
 
   override def put(key: String, `val`: String): Unit = update(_.updated(key, `val`))
   override def get(key: String): String = getMDC.get(key).orNull
-  override def remove(key: String): Unit = update(_.removed(key))
+  override def remove(key: String): Unit = update(_ - key)
   override def clear(): Unit = setMDC(Map.empty)
 
-  override def getCopyOfContextMap: ju.Map[String, String] = getMDC.asJava
-  override def setContextMap(contextMap: ju.Map[String, String] @unchecked): Unit = setMDC(contextMap.asScala.toMap)
+  import scala.collection.convert.ImplicitConversions.*
+  override def getCopyOfContextMap: ju.Map[String, String] = getMDC
+  override def setContextMap(contextMap: ju.Map[String, String] @unchecked): Unit = setMDC(contextMap.toMap)
 
   // TODO: Local[Map[String, List]]
   override def pushByKey(key: String, value: String): Unit = ???
