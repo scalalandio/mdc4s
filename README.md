@@ -9,7 +9,7 @@ Hack-utility for setting up MDC context
 
 ## How it works?
 
-TODO (OlegPy's solution: https://olegpy.com/better-logging-monix-1/ adapted to Cats Effect 3 and Slf4j 2).
+TODO (OlegPy's solution: [https://olegpy.com/better-logging-monix-1/ (Web Archive)](https://web.archive.org/web/20230201063241/https://olegpy.com/better-logging-monix-1/) adapted to Cats Effect 3 and Slf4j 2).
 
 ## Would Cats Effect maintainers like it?
 

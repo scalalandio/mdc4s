@@ -35,7 +35,7 @@ val versions = new {
 
   // Dependencies
   val catsEffect = "3.5.4"
-  val monix = "3.4.0"
+  val monix = "3.4.1"
   val slf4j = "2.0.13"
 }
 
@@ -256,7 +256,7 @@ val ciCommand = (platform: String, scalaSuffix: String) => {
 
 val publishLocalForTests = {
   for {
-    module <- Vector("mdc4s", "mdc4s-cats-effect", "mdc4s-monix")
+    module <- Vector("mdc4s", "mdc4s-cats-effect", "mdc4s-monix", "mdc4s-slf4j")
     moduleVersion <- Vector(module, module + "3")
   } yield moduleVersion + "/publishLocal"
 }.mkString(" ; ")
@@ -288,6 +288,7 @@ lazy val root = project
          | - mdc4s (obligatory)
          | - mdc4s-cats-effect (optional)
          | - mdc4s-monix (optional)
+         | - mdc4s-slf4j (the only logging we're connecting to)
          |for the right Scala version and platform (see projects task).
          |""".stripMargin,
     usefulTasks := Seq(
@@ -329,7 +330,7 @@ lazy val root = project
   .settings(publishSettings)
   .settings(noPublishSettings)
   .aggregate(
-    (mdc4s.projectRefs ++ mdc4sCatsEffect.projectRefs ++ mdc4sMonix.projectRefs) *
+    (mdc4s.projectRefs ++ mdc4sCatsEffect.projectRefs ++ mdc4sMonix.projectRefs ++ mdc4sSlf4j.projectRefs) *
   )
 
 lazy val mdc4s = projectMatrix
@@ -352,40 +353,59 @@ lazy val mdc4s = projectMatrix
 
 lazy val mdc4sCatsEffect = projectMatrix
   .in(file("modules/mdc4s-cats-effect"))
-  .someVariations(versions.scalas, List(VirtualAxis.jvm))((only1VersionInIDE) *)
+  // Scala Native but only for 0.4
+  .someVariations(versions.scalas, List(VirtualAxis.jvm, VirtualAxis.js))((only1VersionInIDE) *)
   .enablePlugins(GitVersioning, GitBranchPrompt)
   .disablePlugins(WelcomePlugin)
   .settings(
     moduleName := "mdc4s-cats-effect",
     name := "mdc4s-cats-effect",
-    description := "MDC implementation for Cats Effect"
+    description := "MDC integration for Cats Effect"
   )
   .settings(settings *)
   .settings(versionSchemeSettings *)
   .settings(publishSettings *)
   .settings(mimaSettings *)
   .settings(
-    libraryDependencies += "org.typelevel" %% "cats-effect" % versions.catsEffect,
-    libraryDependencies += "org.slf4j" % "slf4j-api" % versions.slf4j
+    libraryDependencies += "org.typelevel" %%% "cats-effect" % versions.catsEffect
   )
   .dependsOn(mdc4s)
 
 lazy val mdc4sMonix = projectMatrix
   .in(file("modules/mdc4s-monix"))
-  .someVariations(versions.scalas, List(VirtualAxis.jvm))((only1VersionInIDE) *)
+  // no version for Scala Native at all
+  .someVariations(versions.scalas, List(VirtualAxis.jvm, VirtualAxis.js))((only1VersionInIDE) *)
   .enablePlugins(GitVersioning, GitBranchPrompt)
   .disablePlugins(WelcomePlugin)
   .settings(
     moduleName := "mdc4s-monix",
     name := "mdc4s-monix",
-    description := "MDC implementation for Monix"
+    description := "MDC integration for Monix"
   )
   .settings(settings *)
   .settings(versionSchemeSettings *)
   .settings(publishSettings *)
   .settings(mimaSettings *)
   .settings(
-    libraryDependencies += "io.monix" %% "monix" % versions.monix,
+    libraryDependencies += "io.monix" %%% "monix" % versions.monix
+  )
+  .dependsOn(mdc4s)
+
+lazy val mdc4sSlf4j = projectMatrix
+  .in(file("modules/mdc4s-slf4j"))
+  .someVariations(versions.scalas, List(VirtualAxis.jvm))((only1VersionInIDE) *)
+  .enablePlugins(GitVersioning, GitBranchPrompt)
+  .disablePlugins(WelcomePlugin)
+  .settings(
+    moduleName := "mdc4s-slf4j",
+    name := "mdc4s-slf4j",
+    description := "MDC integration for Slf4j"
+  )
+  .settings(settings *)
+  .settings(versionSchemeSettings *)
+  .settings(publishSettings *)
+  .settings(mimaSettings *)
+  .settings(
     libraryDependencies += "org.slf4j" % "slf4j-api" % versions.slf4j
   )
   .dependsOn(mdc4s)
