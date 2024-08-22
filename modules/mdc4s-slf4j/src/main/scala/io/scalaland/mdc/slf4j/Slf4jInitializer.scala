@@ -10,9 +10,9 @@ private[slf4j] object Slf4jInitializer extends MDC.Initializer[MDCAdapter] {
 
   /** Based on OlegPy's solution: https://olegpy.com/better-logging-monix-1/, adapted to new Slf4j 2. */
   @nowarn
-  private final class Impl(ctxManager: MDC.CtxManager) extends MDCAdapter {
+  final private class Impl(ctxManager: MDC.CtxManager) extends MDCAdapter {
     import ctxManager.*
-    
+
     override def put(key: String, `val`: String): Unit = update(_.updated(key, `val`))
     override def get(key: String): String = getMDC.get(key).orNull
     override def remove(key: String): Unit = update(_ - key)
@@ -28,7 +28,7 @@ private[slf4j] object Slf4jInitializer extends MDC.Initializer[MDCAdapter] {
     override def getCopyOfDequeByKey(key: String): ju.Deque[String] = ???
     override def clearDequeByKey(key: String): Unit = ???
   }
-  
+
   override def apply(ctxManager: MDC.CtxManager): Unit = {
     val field = classOf[org.slf4j.MDC].getDeclaredField("mdcAdapter")
     field.setAccessible(true)

@@ -330,7 +330,7 @@ lazy val root = project
   .settings(publishSettings)
   .settings(noPublishSettings)
   .aggregate(
-    (mdc4s.projectRefs ++ mdc4sCatsEffect.projectRefs ++ mdc4sMonix.projectRefs ++ mdc4sSlf4j.projectRefs) *
+    (mdc4s.projectRefs ++ mdc4sCatsEffect.projectRefs ++ mdc4sMonix.projectRefs ++ mdc4sSlf4j.projectRefs ++ mdc4sSlf4jTestLogger.projectRefs ++ mdc4sSlf4jMonixTest.projectRefs ++ mdc4sSlf4jCatsEffectTest.projectRefs) *
   )
 
 lazy val mdc4s = projectMatrix
@@ -347,9 +347,6 @@ lazy val mdc4s = projectMatrix
   .settings(versionSchemeSettings *)
   .settings(publishSettings *)
   .settings(mimaSettings *)
-  .settings(
-    libraryDependencies += "org.scalameta" %%% "munit" % "1.0.0" % Test
-  )
 
 lazy val mdc4sCatsEffect = projectMatrix
   .in(file("modules/mdc4s-cats-effect"))
@@ -409,6 +406,64 @@ lazy val mdc4sSlf4j = projectMatrix
     libraryDependencies += "org.slf4j" % "slf4j-api" % versions.slf4j
   )
   .dependsOn(mdc4s)
+
+lazy val mdc4sSlf4jTestLogger = projectMatrix
+  .in(file("modules/mdc4s-slf4j-test-logger"))
+  .someVariations(versions.scalas, List(VirtualAxis.jvm))((only1VersionInIDE) *)
+  .enablePlugins(GitVersioning, GitBranchPrompt)
+  .disablePlugins(WelcomePlugin)
+  .settings(
+    moduleName := "mdc4s-slf4j-test-logger",
+    name := "mdc4s-slf4j-test-logger",
+    description := "Test logger for Slf4j"
+  )
+  .settings(settings *)
+  .settings(versionSchemeSettings *)
+  .settings(publishSettings *)
+  .settings(mimaSettings *)
+  .settings(
+    libraryDependencies += "org.slf4j" % "slf4j-api" % versions.slf4j
+  )
+
+lazy val mdc4sSlf4jCatsEffectTest = projectMatrix
+  .in(file("modules/mdc4s-slf4j-cats-effect-test"))
+  // no version for Scala Native at all
+  .someVariations(versions.scalas, List(VirtualAxis.jvm))((only1VersionInIDE) *)
+  .enablePlugins(GitVersioning, GitBranchPrompt)
+  .disablePlugins(WelcomePlugin)
+  .settings(
+    moduleName := "mdc4s-slf4j-cats-effect-test",
+    name := "mdc4s-slf4j-monix-cats-effect",
+    description := "Test Slf4j with Cats Effect integration"
+  )
+  .settings(settings *)
+  .settings(versionSchemeSettings *)
+  .settings(publishSettings *)
+  .settings(noPublishSettings *)
+  .settings(
+    libraryDependencies += "org.scalameta" %% "munit" % "1.0.0" % Test
+  )
+  .dependsOn(mdc4sSlf4j, mdc4sSlf4jTestLogger, mdc4sCatsEffect)
+
+lazy val mdc4sSlf4jMonixTest = projectMatrix
+  .in(file("modules/mdc4s-slf4j-monix-test"))
+  // no version for Scala Native at all
+  .someVariations(versions.scalas, List(VirtualAxis.jvm))((only1VersionInIDE) *)
+  .enablePlugins(GitVersioning, GitBranchPrompt)
+  .disablePlugins(WelcomePlugin)
+  .settings(
+    moduleName := "mdc4s-slf4j-monix-test",
+    name := "mdc4s-slf4j-monix-test",
+    description := "Test Slf4j with Monix integration"
+  )
+  .settings(settings *)
+  .settings(versionSchemeSettings *)
+  .settings(publishSettings *)
+  .settings(noPublishSettings *)
+  .settings(
+    libraryDependencies += "org.scalameta" %% "munit" % "1.0.0" % Test
+  )
+  .dependsOn(mdc4sSlf4j, mdc4sSlf4jTestLogger, mdc4sMonix)
 
 addCommandAlias("fullTest", "test")
 addCommandAlias("fullCoverageTest", "coverage ; test ; coverageReport ; coverageAggregate")
