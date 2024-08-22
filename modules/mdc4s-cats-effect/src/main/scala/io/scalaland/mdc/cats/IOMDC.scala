@@ -17,8 +17,12 @@ object IOMDC {
   }
 
   /** Requires tagless final with `IOGlobal.configuredStatePropagation` instead of `IO.asyncForIO` to work. */
-  def configure[A: MDC.Initializer]: IO[MDC[IO]] = for {
+  def configure[A: MDC.Initializer](
+      onFork: MDC.Ctx => MDC.Ctx = identity,
+      onJoin: (MDC.Ctx, MDC.Ctx) => MDC.Ctx = (a, _) => a
+  ): IO[MDC[IO]] = for {
     local <- IOLocal(Map.empty[String, String])
+    _ <- IOGlobal.addHandler(local, ForkJoinLocalHandler(onFork)(onJoin))
     _ <- IO(MDC.Initializer[A](new IOCtxManager(local)))
   } yield new IOMDC(local)
 }

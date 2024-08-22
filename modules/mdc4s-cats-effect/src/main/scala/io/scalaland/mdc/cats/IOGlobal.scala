@@ -1,5 +1,6 @@
 package io.scalaland.mdc.cats
 
+import cats.syntax.all.*
 import cats.effect.kernel.*
 import cats.effect.{Async, IO, IOLocal, IOLocalHack}
 
@@ -18,6 +19,30 @@ object IOGlobal {
   private val threadLocal: ThreadLocal[scala.collection.immutable.Map[IOLocal[?], Any]] =
     ThreadLocal.withInitial(() => scala.collection.immutable.Map.empty[IOLocal[?], Any])
 
+  private var handlers = Map.empty[IOLocal[Any], ForkJoinLocalHandler[Any]]
+
+  def addHandler[A](local: IOLocal[A], handler: ForkJoinLocalHandler[A]): IO[Unit] = IO {
+    // TODO: something proper instead of synchronized
+    synchronized {
+      handlers = handlers.updated(local.asInstanceOf[IOLocal[Any]], handler.asInstanceOf[ForkJoinLocalHandler[Any]])
+    }
+  }
+
+  private def onFork(): IO[Unit] =
+    handlers.toList.traverse_ { case (local, handler) =>
+      local.update(handler.onFork)
+    }
+
+  private def forked: Map[IOLocal[Any], Any] =
+    handlers.keys.flatMap(local => getCurrent(local).map(local -> _)).toMap
+
+  private def onJoin(forked: Map[IOLocal[Any], Any]): IO[Unit] =
+    handlers.toList.traverse_ { case (local, handler) =>
+      forked.get(local).traverse_ { forkedValue =>
+        local.update(handler.onJoin(_, forkedValue))
+      }
+    }
+
   private def propagateState[A](thunk: => IO[A]): IO[A] =
     IOLocalHack.get.flatMap { state => threadLocal.set(state); thunk }
 
@@ -35,6 +60,22 @@ object IOGlobal {
     override def suspend[A](hint: Sync.Type)(thunk: => A): IO[A] =
       tc.suspend(hint)(propagateState(tc.pure(thunk))).flatten
 
+    // methods we had to wrap to control the propagation of values between patent and child fiber
+    override def start[A](fa: IO[A]): IO[Fiber[IO, Throwable, A]] =
+      (onFork() >> fa.map(_ -> forked)).start.map { fiber =>
+        new Fiber[IO, Throwable, A] {
+          def cancel: IO[Unit] = fiber.cancel
+          def join: IO[Outcome[IO, Throwable, A]] =
+            fiber.join.flatMap { outcome =>
+              outcome.fold(
+                IO(Outcome.canceled),
+                error => IO(Outcome.errored(error)),
+                _.flatMap { case (a, forked) => onJoin(forked).as(Outcome.succeeded(IO.pure(a))) }
+              )
+            }
+        }
+      }
+
     // methods where user would not be able to read state, so they don't have to propagate it
     override def evalOn[A](fa: IO[A], ec: ExecutionContext): IO[A] = tc.evalOn(fa, ec)
     override def executionContext: IO[ExecutionContext] = tc.executionContext
@@ -45,7 +86,6 @@ object IOGlobal {
     override def raiseError[A](e: Throwable): IO[A] = tc.raiseError(e)
     override def monotonic: IO[FiniteDuration] = tc.monotonic
     override def realTime: IO[FiniteDuration] = tc.realTime
-    override def start[A](fa: IO[A]): IO[Fiber[IO, Throwable, A]] = tc.start(fa)
     override def cede: IO[Unit] = tc.cede
     override def forceR[A, B](fa: IO[A])(fb: IO[B]): IO[B] = tc.forceR(fa)(fb)
     override def uncancelable[A](body: Poll[IO] => IO[A]): IO[A] = tc.uncancelable(body)

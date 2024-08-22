@@ -12,6 +12,7 @@ class CatsEffectIOWithSlf4jMDCLoggingSpec extends munit.FunSuite {
     import cats.effect.implicits.*
     import cats.effect.unsafe.implicits.*
     import org.slf4j.LoggerFactory
+    import org.slf4j.event.Level
     import scala.concurrent.duration.*
     // import integrations
     import io.scalaland.mdc.MDC
@@ -60,26 +61,61 @@ class CatsEffectIOWithSlf4jMDCLoggingSpec extends munit.FunSuite {
           "MDC.set(key, value) should add value to MDC in logs"
         )
         assert(
-          logs.find(_.message == "Log inside .start before MDC").map(_.mdc).contains(Map(reqIDTag -> originalReqID)),
-          "MDC should be inherited from the parent Fiber"
+          logs
+            .find(_.message == "Log inside .start before MDC")
+            .map(_.mdc)
+            .contains(Map(reqIDTag -> originalReqID, "forked" -> "yes")),
+          "MDC should be inherited from the parent Fiber and modified by onFork call"
         )
         assert(
-          logs.find(_.message == "Log inside .start after MDC").map(_.mdc).contains(Map(reqIDTag -> forkedReqID)),
+          logs
+            .find(_.message == "Log inside .start after MDC")
+            .map(_.mdc)
+            .contains(Map(reqIDTag -> forkedReqID, "forked" -> "yes")),
           "MDC.set(key, value) should update value in MDC in logs"
         )
         assert(reqID1.contains(originalReqID), "Forked Fiber does not modify current Fiber's MDC")
         assert(
-          logs.find(_.message == "Log after .start and before .join").map(_.mdc).contains(Map(reqIDTag -> originalReqID)),
+          logs
+            .find(_.message == "Log after .start and before .join")
+            .map(_.mdc)
+            .contains(Map(reqIDTag -> originalReqID)),
           "Forked Fiber does not modify current Fiber's MDC"
         )
-        assert(reqID2.contains(originalReqID), "Joined Fiber does not modify current Fiber's MDC")
+        assert(reqID2 == None, "Joined Fiber modify current Fiber's MDC with onJoin call")
         assert(
-          logs.find(_.message == "Log after .start and after .join").map(_.mdc).contains(Map(reqIDTag -> originalReqID)),
+          logs
+            .find(_.message == "Log after .start and after .join")
+            .map(_.mdc)
+            .contains(
+              Map(s"current.$reqIDTag" -> originalReqID, s"forked.$reqIDTag" -> forkedReqID, "forked.forked" -> "yes")
+            ),
           "Joined Fiber does not modify current Fiber's MDC"
         )
+        // format: off
+        assert(
+          logs == List(
+            TestLogger.Entry(Level.INFO, "Log inside .flatMap before MDC", None, None, Map()),
+            TestLogger.Entry(Level.INFO, "Log inside .flatMap after MDC", None, None, Map(reqIDTag -> originalReqID)),
+            TestLogger.Entry(Level.INFO, "Log inside .start before MDC", None, None, Map(reqIDTag -> originalReqID, "forked" -> "yes")),
+            TestLogger.Entry(Level.INFO, "Log inside .start after MDC", None, None, Map(reqIDTag -> forkedReqID, "forked" -> "yes")),
+            TestLogger.Entry(Level.INFO, "Log after .start and before .join", None, None, Map(reqIDTag -> originalReqID)),
+            TestLogger.Entry(Level.INFO, "Log after .start and after .join", None, None, Map(s"current.$reqIDTag" -> originalReqID, s"forked.$reqIDTag" -> forkedReqID, "forked.forked" -> "yes")),
+          ),
+          "All logs are present and in order"
+        )
+        // format: on
       }
 
-      program(IOMDC.configure[MDCAdapter])(IOGlobal.configuredStatePropagation)
+      program(
+        IOMDC.configure[MDCAdapter](
+          // test onFork by adding forked -> yes entry
+          onFork = ctx => ctx.updated("forked", "yes"),
+          // test onJoin by prepending prefixed to values from both sides
+          onJoin = (ctx1, ctx2) =>
+            ctx1.map { case (k, v) => s"current.$k" -> v } ++ ctx2.map { case (k, v) => s"forked.$k" -> v }
+        )
+      )(IOGlobal.configuredStatePropagation)
     }
 
     test.unsafeRunSync()

@@ -20,8 +20,12 @@ object TaskMDC {
   }
 
   /** Requires `task.executeWithOptions(_.enableLocalContextPropagation)`. */
-  def configure[A: MDC.Initializer]: Task[MDC[Task]] = for {
+  def configure[A: MDC.Initializer](
+      onFork: MDC.Ctx => MDC.Ctx = identity,
+      onJoin: (MDC.Ctx, MDC.Ctx) => MDC.Ctx = (a, _) => a
+  ): Task[MDC[Task]] = for {
     local <- Task.now(Local[MDC.Ctx](Map.empty))
+    _ <- TaskGlobal.addHandler(local, ForkJoinLocalHandler(onFork)(onJoin))
     _ <- Task(MDC.Initializer[A](new TaskCtxManager(local)))
   } yield new TaskMDC(local)
 }
