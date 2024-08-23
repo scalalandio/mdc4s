@@ -16,6 +16,7 @@ import scala.concurrent.duration.FiniteDuration
   */
 object IOGlobal {
 
+  // Probably will be simplified once https://github.com/typelevel/cats-effect/pull/3636 will be merged and released.
   private val threadLocal: ThreadLocal[scala.collection.immutable.Map[IOLocal[?], Any]] =
     ThreadLocal.withInitial(() => scala.collection.immutable.Map.empty[IOLocal[?], Any])
 
