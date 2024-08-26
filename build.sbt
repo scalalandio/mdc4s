@@ -233,22 +233,40 @@ val noPublishSettings =
   Seq(publish / skip := true, publishArtifact := false)
 
 val ciCommand = (platform: String, scalaSuffix: String) => {
+  case class Meta(name: String, isJVM: Boolean, isJS: Boolean, isNative: Boolean, isTestModule: Boolean)
+  val projects = Vector(
+    Meta("mdc4s", isJVM = true, isJS = true, isNative = true, isTestModule = false),
+    Meta("mdc4sCatsEffect", isJVM = true, isJS = false, isNative = false, isTestModule = false),
+    Meta("mdc4sMonix", isJVM = true, isJS = false, isNative = false, isTestModule = false),
+    Meta("mdc4sSlf4j", isJVM = true, isJS = false, isNative = false, isTestModule = false),
+    Meta("mdc4sSlf4jTestLogger", isJVM = true, isJS = false, isNative = false, isTestModule = false),
+    Meta("mdc4sSlf4jCatsEffectTest", isJVM = true, isJS = false, isNative = false, isTestModule = true),
+    Meta("mdc4sSlf4jMonixTest", isJVM = true, isJS = false, isNative = false, isTestModule = true)
+  )
+
   val isJVM = platform == "JVM"
 
   val clean = Vector("clean")
   def withCoverage(tasks: String*): Vector[String] =
     "coverage" +: tasks.toVector :+ "coverageAggregate" :+ "coverageOff"
 
-  val projects = Vector("mdc4s")
-    .map(name => s"$name${if (isJVM) "" else platform}$scalaSuffix")
-  def tasksOf(name: String): Vector[String] = projects.map(project => s"$project/$name")
+  def tasksOf(name: String, isTest: Boolean = false): Vector[String] = projects
+    .filter(_.isTestModule == isTest)
+    .collect {
+      case meta: Meta if platform == "JVM" && meta.isJVM       => meta.name + scalaSuffix
+      case meta: Meta if platform == "JS" && meta.isJS         => meta.name + platform + scalaSuffix
+      case meta: Meta if platform == "Native" && meta.isNative => meta.name + platform + scalaSuffix
+    }
+    .map(project => s"$project/$name")
 
   val tasks = if (isJVM) {
     clean ++
-      withCoverage((tasksOf("compile") ++ tasksOf("test") ++ tasksOf("coverageReport")).toSeq *) ++
+      withCoverage(
+        (tasksOf("compile") ++ tasksOf("test", isTest = true) ++ tasksOf("coverageReport", isTest = true)).toSeq *
+      ) ++
       tasksOf("mimaReportBinaryIssues")
   } else {
-    clean ++ tasksOf("test")
+    clean ++ tasksOf("test", isTest = true)
   }
 
   tasks.mkString(" ; ")
@@ -256,7 +274,7 @@ val ciCommand = (platform: String, scalaSuffix: String) => {
 
 val publishLocalForTests = {
   for {
-    module <- Vector("mdc4s", "mdc4s-cats-effect", "mdc4s-monix", "mdc4s-slf4j")
+    module <- Vector("mdc4s", "mdc4sCatsEffect", "mdc4sMonix", "mdc4sSlf4j")
     moduleVersion <- Vector(module, module + "3")
   } yield moduleVersion + "/publishLocal"
 }.mkString(" ; ")
@@ -299,8 +317,6 @@ lazy val root = project
           "Compile and test all projects in all Scala versions and platforms (beware! it uses a lot of memory and might OOM!)"
         )
         .noAlias,
-      sbtwelcome.UsefulTask("mdc4s-cats-effect3/console", "Drop into REPL with MDC4s imported (3)").noAlias,
-      sbtwelcome.UsefulTask("mdc4s-cats-effect/console", "Drop into REPL with MDC4s imported (2.13)").noAlias,
       sbtwelcome
         .UsefulTask(releaseCommand(git.gitCurrentTags.value), "Publish everything to release or snapshot repository")
         .alias("ci-release"),
