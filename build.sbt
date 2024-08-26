@@ -236,8 +236,8 @@ val ciCommand = (platform: String, scalaSuffix: String) => {
   case class Meta(name: String, isJVM: Boolean, isJS: Boolean, isNative: Boolean, isTestModule: Boolean)
   val projects = Vector(
     Meta("mdc4s", isJVM = true, isJS = true, isNative = true, isTestModule = false),
-    Meta("mdc4sCatsEffect", isJVM = true, isJS = false, isNative = false, isTestModule = false),
-    Meta("mdc4sMonix", isJVM = true, isJS = false, isNative = false, isTestModule = false),
+    Meta("mdc4sCatsEffect", isJVM = true, isJS = true, isNative = false, isTestModule = false),
+    Meta("mdc4sMonix", isJVM = true, isJS = true, isNative = false, isTestModule = false),
     Meta("mdc4sSlf4j", isJVM = true, isJS = false, isNative = false, isTestModule = false),
     Meta("mdc4sSlf4jTestLogger", isJVM = true, isJS = false, isNative = false, isTestModule = false),
     Meta("mdc4sSlf4jCatsEffectTest", isJVM = true, isJS = false, isNative = false, isTestModule = true),
@@ -266,7 +266,7 @@ val ciCommand = (platform: String, scalaSuffix: String) => {
       ) ++
       tasksOf("mimaReportBinaryIssues")
   } else {
-    clean ++ tasksOf("test", isTest = true)
+    clean ++ tasksOf("compile") ++ tasksOf("test", isTest = true)
   }
 
   tasks.mkString(" ; ")
